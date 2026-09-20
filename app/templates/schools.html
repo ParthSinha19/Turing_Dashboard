@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% import "_m.html" as m %}
+{% block title %}Schools{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Schools</h1><p class="muted">Each school has its own info sheet and feedback history.</p></div>
+<section class="panel flush">
+  <div class="scroll"><table>
+    <thead><tr><th>School</th><th>Club day</th><th class="num">Sessions</th><th>Last session</th><th>Engagement</th><th>Sentiment</th><th>Info sheet</th></tr></thead>
+    <tbody>{% for s in schools %}
+      <tr data-href="/schools/{{ s.school_id }}">
+        <td><a href="/schools/{{ s.school_id }}">{{ m.school_cell(s) }}</a><div class="small muted">{{ s.school_id }}</div></td>
+        <td>{{ s.club_days or '—' }}</td><td class="num">{{ s.n }}</td>
+        <td>{{ s.last|date('%d %b') if s.last else '—' }}</td><td>{{ m.meter(s.engagement) }}</td>
+        <td style="min-width:150px">{% if s.n %}<div class="sbar">{% for k, c in (('Positive','pos'),('Mixed','mix'),('Negative','neg')) %}{% if s.sentiment[k].pct %}<span class="{{ c }}" style="width:{{ s.sentiment[k].pct }}%" title="{{ k }} {{ s.sentiment[k].pct }}%"></span>{% endif %}{% endfor %}</div>{% else %}<span class="muted small">No feedback yet</span>{% endif %}</td>
+        <td>{% if s.review.state == 'ok' %}<span class="flag ok">{{ s.review.label }}</span>{% elif s.review.state == 'stale' %}<span class="flag warn">{{ s.review.label }}</span>{% else %}<span class="flag warn">Not filled in</span>{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+
+<section class="panel" style="margin-top:16px">
+  <h2>Add a school</h2>
+  <form method="post" action="/schools/new" class="inline-form">
+    <div><label for="n">Official name</label><input type="text" id="n" name="name" required></div>
+    <div><label for="a">Other names in feedback (comma separated, optional)</label><input type="text" id="a" name="aliases" placeholder="e.g. Hurlingham, HPS"></div>
+    <button class="btn primary" type="submit">Add school</button>
+  </form>
+  <p class="small muted" style="margin:10px 0 0">Feedback is matched to schools by these names, so use the wording teachers type on the form.</p>
+</section>
+{% endblock %}

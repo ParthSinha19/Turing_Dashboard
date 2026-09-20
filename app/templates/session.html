@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% import "_m.html" as m %}
+{% block title %}{{ r.school_name }}, {{ r.session_date|date('%d %b') }}{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="/schools">Schools</a> / <a href="/schools/{{ r.school_id }}">{{ r.school_name }}</a> / Session on {{ r.session_date|date('%d %b') }}</div>
+<div class="page-head between">
+  <div style="display:flex;gap:16px;align-items:center">
+    {{ m.logo(r, 'lg') }}
+    <div>
+      <h1>{{ r.activity or 'Session' }}</h1>
+      <p style="margin:0"><a href="/schools/{{ r.school_id }}">{{ r.school_name }}</a></p>
+      <p style="margin:6px 0 0">{{ m.sent(r.teacher_sentiment) }} {{ m.attn(r) }} {{ m.prio(r.priority, r.action_status) }}</p>
+    </div>
+  </div>
+  <div class="noprint"><a class="btn" href="/week?start={{ r.week_start }}">Week of {{ r.week_start|date('%d %b') }}</a></div>
+</div>
+
+<div class="grid g2">
+  <section class="panel">
+    <h2>Session details</h2>
+    <dl class="kv">
+      <dt>Date</dt><dd>{{ r.session_date|date }}</dd>
+      <dt>Teacher</dt><dd>{{ r.teacher or '—' }}</dd>
+      <dt>Year group</dt><dd>{{ r.year_group_label or '—' }}{% if group and group.room %} <span class="muted">({{ group.room }})</span>{% endif %}</dd>
+      <dt>Students present</dt><dd>{{ r.students_present if r.students_present is not none else '—' }}</dd>
+      <dt>Session</dt><dd>{% if r.session_number %}Session {{ r.session_number }}{% endif %}{% if r.programme_week %}, week {{ r.programme_week }}{% endif %}{% if not r.session_number and not r.programme_week %}—{% endif %}</dd>
+      <dt>Completed as planned</dt><dd>{{ r.completion_raw or '—' }}{% if r.incomplete_reason %}<br><span class="muted">Reason: {{ r.incomplete_reason }}</span>{% endif %}</dd>
+      <dt>Technical problems</dt><dd>{% if r.technical_status == 'none' %}None{% else %}<span class="flag warn">{{ r.technical_status|capitalize }}</span>{% if r.technical_description %}<div class="verbatim" style="margin-top:6px">{{ r.technical_description }}</div>{% endif %}{% endif %}</dd>
+    </dl>
+    {% if r.school_match_method in ('text', 'manual') or r.needs_school_review %}
+      <p class="small muted" style="margin:12px 0 0">School identified {{ 'by hand' if r.school_match_method == 'manual' else 'from the feedback text' }}. Form entry: “{{ r.school_name_raw or '—' }}”.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Ratings</h2>
+    <dl class="kv">
+      <dt>Engagement</dt><dd>{{ m.meter(r.engagement) }}</dd>
+      <dt>Enjoyment</dt><dd>{{ m.meter(r.enjoyment) }}</dd>
+      <dt>Understanding</dt><dd>{{ m.meter(r.understanding) }}</dd>
+      <dt>Difficulty</dt><dd>{{ m.meter(r.difficulty) }} <span class="small muted">1 too easy, 5 too hard</span></dd>
+      <dt>Pace</dt><dd>{{ m.meter(r.pace) }}</dd>
+      <dt>Activity quality</dt><dd>{{ m.meter(r.activity_quality) }}</dd>
+      <dt>Teacher confidence</dt><dd>{% if r.teacher_confidence is not none %}{{ m.meter(r.teacher_confidence) }}{% else %}<span class="muted">Not asked on the current form</span>{% endif %}</dd>
+    </dl>
+  </section>
+</div>
+
+<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); margin-top:16px; align-items:start">
+  <section class="panel">
+    <h2>Teacher's feedback</h2>
+    <p class="small muted">Shown exactly as submitted.</p>
+    {% if r.sensitivity_flag %}<p class="small"><span class="flag warn">Check wording</span> <span class="muted">This text may include a comment about pupils' ability or needs. Keep pupil detail off shared notes.</span></p>{% endif %}
+
+    <div class="section">
+      <h3>What went well</h3>
+      {% if tags.positive %}<div class="tags">{% for t in tags.positive %}<span class="tag pos">{{ t }}</span>{% endfor %}</div>{% endif %}
+      {% if r.positive_comment %}<p class="verbatim">{{ r.positive_comment }}</p>{% elif not tags.positive %}<p class="muted">Nothing written.</p>{% endif %}
+    </div>
+    <div class="section">
+      <h3>What didn't go well</h3>
+      {% if tags.negative %}<div class="tags">{% for t in tags.negative %}<span class="tag neg">{{ t }}</span>{% endfor %}</div>{% endif %}
+      {% if r.negative_comment %}<p class="verbatim">{{ r.negative_comment }}</p>{% elif not tags.negative %}<p class="muted">No significant difficulties reported.</p>{% endif %}
+    </div>
+    <div class="section">
+      <h3>Student response</h3>
+      <p>{{ m.sent(r.teacher_sentiment) }} <span class="muted">Teacher selected “{{ r.student_response_raw or '—' }}”</span></p>
+    </div>
+    <div class="section">
+      <h3>Evidence</h3>
+      {% if r.evidence %}<p class="verbatim">{{ r.evidence }}</p>{% else %}<p class="muted">Nothing written.</p>{% endif %}
+    </div>
+    <div class="section">
+      <h3>Teacher reflection</h3>
+      {% if r.teacher_reflection %}<p class="verbatim">{{ r.teacher_reflection }}</p>{% endif %}
+      <p class="{{ 'muted' if r.teacher_reflection }}">How the session went, in the teacher's view: <b>{{ r.session_outcome or '—' }}</b></p>
+    </div>
+  </section>
+
+  <div class="stack">
+    <section class="panel">
+      <h2>Action required</h2>
+      <dl class="kv" style="grid-template-columns:110px 1fr">
+        <dt>Type</dt><dd>{{ r.action_category or '—' }}</dd>
+        <dt>Action</dt><dd>{% if r.action_required %}<span class="verbatim" style="display:block">{{ r.action_required }}</span>{% else %}—{% endif %}</dd>
+        <dt>Priority</dt><dd>{% if r.priority %}<span class="flag {{ 'high' if r.is_high_priority else 'soft' }}">P{{ r.priority }}{{ ', high' if r.is_high_priority }}</span>{% else %}—{% endif %}</dd>
+        <dt>Status</dt><dd>{% if r.action_status == 'none' %}No action needed{% elif r.action_status == 'open' %}<span class="flag">Open</span>{% else %}<span class="flag ok">Done {{ r.action_closed_at|date('%d %b') }}</span>{% endif %}</dd>
+        {% if r.action_owner %}<dt>Owner</dt><dd>{{ r.action_owner }}</dd>{% endif %}
+      </dl>
+      {% if r.action_status != 'none' %}
+      <form method="post" action="/sessions/{{ r.session_id }}/action" class="inline-form noprint" style="margin-top:14px">
+        <div><label for="o">Owner</label><input type="text" id="o" name="action_owner" value="{{ r.action_owner or editor }}"></div>
+        <div style="flex:0 0 130px"><label for="s">Status</label>
+          <select id="s" name="action_status"><option value="open" {{ 'selected' if r.action_status == 'open' }}>Open</option><option value="done" {{ 'selected' if r.action_status == 'done' }}>Done</option></select></div>
+        <button class="btn" type="submit">Update</button>
+      </form>
+      {% endif %}
+    </section>
+
+    <section class="ai-panel">
+      <h2>AI analysis</h2>
+      <p class="small muted">Generated by a model, kept separate from the teacher's words. It can be wrong; the teacher's response above is the record.</p>
+      {% if ai %}
+        {% for a in ai %}
+        <div class="section" style="margin-top:12px;padding-top:12px">
+          <div class="between" style="gap:8px">
+            <span>{{ {'positive_comment':'What went well','negative_comment':"What didn't go well",'evidence':'Evidence','action_required':'Action'}.get(a.source_field, a.source_field) }}</span>
+            <span>{{ m.sent(a.sentiment) }} <span class="small muted">{{ (a.sentiment_confidence * 100)|round|int }}%</span>
+              {% if a.needs_review %}<span class="flag warn">Low confidence, review</span>{% endif %}</span>
+          </div>
+          {% if a.themes %}<div class="tags" style="margin-top:6px">{% for t in a.themes %}<span class="tag">{{ t }}</span>{% endfor %}</div>{% endif %}
+          {% if a.ai_summary %}<p class="small" style="margin:6px 0 0">{{ a.ai_summary }}</p>{% endif %}
+          <div class="small muted">{{ a.model_version }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted" style="margin:0">No AI analysis for this session yet.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

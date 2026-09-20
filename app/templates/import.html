@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% import "_m.html" as m %}
+{% block title %}Import feedback{% endblock %}
+{% block content %}
+<div class="page-head between"><h1>Import feedback</h1>
+  <a class="btn primary" href="{{ FEEDBACK_FORM_URL }}" target="_blank" rel="noopener">Open feedback form</a>
+</div>
+<div class="page-head">
+  <p class="muted">Upload the Google Forms responses as CSV. Schools are recognised from the wording teachers type. Rows already imported are skipped.</p></div>
+
+<div class="grid g2">
+  <section class="panel">
+    <h2>Upload responses</h2>
+    <form method="post" action="/admin/import" enctype="multipart/form-data" class="stack">
+      <div><label for="f">CSV file</label><input type="file" id="f" name="file" accept=".csv,text/csv" required></div>
+      <button class="btn primary" type="submit">Import</button>
+    </form>
+  </section>
+  <section class="panel">
+    <h2>AI sentiment analysis</h2>
+    <p class="small muted">Model: <code>{{ model_spec }}</code>. Analyses each written comment separately and stores the result with its model version. Results below {{ (LOW_CONFIDENCE * 100)|int }}% confidence are flagged for review.</p>
+    <form method="post" action="/admin/sentiment/run"><button class="btn" type="submit">Run analysis</button></form>
+  </section>
+</div>
+
+<section class="panel flush" style="margin-top:16px">
+  <h2>Feedback waiting for a school {% if pend %}<span class="badge" style="margin-left:4px">{{ pend|length }}</span>{% endif %}</h2>
+  {% if pend %}
+  <div class="scroll"><table>
+    <thead><tr><th>Typed on form</th><th>Session</th><th>Why it waited</th><th>Assign to an existing school</th><th>Or add a new school</th></tr></thead>
+    <tbody>{% for p in pend %}<tr>
+      <td><b>{{ p.school_text or '(blank)' }}</b></td>
+      <td class="small">{{ p.summary.session_date or '—' }}<br>{{ p.summary.activity or '' }}<br>{{ p.summary.year_group or '' }}</td>
+      <td class="small">{{ p.reason }}</td>
+      <td><form method="post" action="/admin/pending/{{ p.pending_id }}/resolve" class="inline-form">
+        <div><select name="school_id" aria-label="School" required><option value="">Choose school</option>{% for s in schools %}<option value="{{ s.school_id }}">{{ s.name }}</option>{% endfor %}</select></div>
+        <button class="btn small" type="submit">Assign</button></form></td>
+      <td><form method="post" action="/admin/pending/{{ p.pending_id }}/new-school" class="inline-form">
+        <div><input type="text" name="name" value="{{ p.school_text or '' }}" aria-label="New school name" required></div>
+        <button class="btn small" type="submit">Add school</button></form></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="small muted" style="padding:0 20px 14px">Assigning a school saves the wording as a search keyword, so the same spelling is matched next time.</p>
+  {% else %}<div class="empty">Every imported row has a school.</div>{% endif %}
+</section>
+
+{% if review_count %}<p class="small muted" style="margin-top:10px">{{ review_count }} session{{ 's' if review_count != 1 }} matched a school from the feedback text rather than the school field. They are marked on the session page.</p>{% endif %}
+
+<section class="panel flush" style="margin-top:16px">
+  <h2>Recent imports</h2>
+  {% if batches %}<table><thead><tr><th>When</th><th>File</th><th class="num">Rows</th><th class="num">Imported</th><th class="num">Already present</th><th class="num">Waiting</th></tr></thead>
+    <tbody>{% for b in batches %}<tr><td class="nowrap">{{ b.imported_at[:16].replace('T', ' ') }}</td><td>{{ b.filename }}</td><td class="num">{{ b.rows_total }}</td><td class="num">{{ b.rows_imported }}</td><td class="num">{{ b.rows_duplicate }}</td><td class="num">{{ b.rows_pending }}</td></tr>{% endfor %}</tbody></table>
+  {% else %}<div class="empty">Nothing imported yet.</div>{% endif %}
+</section>
+{% endblock %}

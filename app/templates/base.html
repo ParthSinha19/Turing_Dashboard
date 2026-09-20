@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}AI Club dashboard{% endblock %} · Turing Education</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/"><span class="mark">T</span> AI Club dashboard</a>
+  <nav aria-label="Main">
+    <a href="/" class="{{ 'on' if active == 'overview' }}">Overview</a>
+    <a href="/week" class="{{ 'on' if active == 'week' }}">This week</a>
+    <a href="/schools" class="{{ 'on' if active == 'schools' }}">Schools</a>
+    <a href="/admin/import" class="{{ 'on' if active == 'import' }}">Import{% if pending %}<span class="badge" title="Feedback waiting for a school">{{ pending }}</span>{% endif %}</a>
+  </nav>
+  <form class="search" action="/search" role="search">
+    <input name="q" value="{{ q }}" aria-label="Search" placeholder="Search a school, or ask: negative feedback this week">
+  </form>
+</header>
+{% if msg %}<div class="flash" role="status">{{ msg }}</div>{% endif %}
+<main>{% block content %}{% endblock %}</main>
+<script>
+  document.querySelectorAll('tr[data-href]').forEach(function (tr) {
+    tr.addEventListener('click', function (e) { if (!e.target.closest('a,button')) window.location = tr.dataset.href; });
+  });
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

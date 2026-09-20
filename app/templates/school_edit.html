@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% import "_m.html" as m %}
+{% block title %}Edit {{ school.name }}{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="/schools">Schools</a> / <a href="/schools/{{ school.school_id }}">{{ school.name }}</a> / Edit</div>
+<div class="page-head"><h1>Edit {{ school.name }}</h1>
+  <p class="muted">Feedback already recorded is not affected. Each changed guideline is saved as a new version; earlier versions are kept.</p></div>
+
+<form method="post" enctype="multipart/form-data" class="stack">
+  <section class="panel">
+    <h2>School and logo</h2>
+    <div class="fgrid">
+      <div><label for="name">Official name</label><input type="text" id="name" name="name" value="{{ school.name }}" required></div>
+      <div><label for="short_name">Short name</label><input type="text" id="short_name" name="short_name" value="{{ school.short_name or '' }}"></div>
+      <div class="wide"><label for="address">Full address</label><input type="text" id="address" name="address" value="{{ school.address or '' }}"></div>
+      <div><label for="postcode">Postcode</label><input type="text" id="postcode" name="postcode" value="{{ school.postcode or '' }}"></div>
+      <div><label for="phone">School phone (main office)</label><input type="text" id="phone" name="phone" value="{{ school.phone or '' }}"></div>
+      <div><label for="club_days">Club days</label><input type="text" id="club_days" name="club_days" value="{{ school.club_days or '' }}" placeholder="e.g. Mondays"></div>
+      <div><label for="ts">Term starts</label><input type="date" id="ts" name="term_start" value="{{ school.term_start or '' }}"></div>
+      <div><label for="te">Term ends</label><input type="date" id="te" name="term_end" value="{{ school.term_end or '' }}"></div>
+      <div class="wide"><label for="aliases">Names teachers use for this school in feedback (comma separated)</label>
+        <input type="text" id="aliases" name="aliases" value="{{ aliases|join(', ') }}">
+        <span class="small muted">Used to match feedback to this school. Keep them distinctive.</span></div>
+      <div class="wide" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+        {{ m.logo(school, 'lg') }}
+        <div style="flex:1 1 260px"><label for="logo">Upload logo (PNG, JPG, WebP or GIF, up to 2 MB)</label><input type="file" id="logo" name="logo" accept="image/png,image/jpeg,image/webp,image/gif"></div>
+        {% if school.logo_path %}<label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" name="remove_logo" value="1" style="width:auto"> Remove current logo</label>{% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Club groups</h2>
+    <p class="small muted">One row per year group and time slot. Clear the year group to remove a row.</p>
+    <div id="groups">
+      <div class="editrow small muted"><span>Year group</span><span>Start</span><span>Finish</span><span>On site by</span><span>Room</span><span>Children</span></div>
+      {% for g in groups %}
+      <div class="editrow">
+        <input type="hidden" name="group_id" value="{{ g.group_id }}">
+        <input type="text" name="g_year" value="{{ g.year_group_label }}" aria-label="Year group">
+        <input type="text" name="g_start" value="{{ g.start_time or '' }}" placeholder="15:15" aria-label="Start">
+        <input type="text" name="g_end" value="{{ g.end_time or '' }}" placeholder="16:00" aria-label="Finish">
+        <input type="text" name="g_onsite" value="{{ g.on_site_by or '' }}" placeholder="15:00" aria-label="On site by">
+        <input type="text" name="g_room" value="{{ g.room or '' }}" aria-label="Room">
+        <input type="number" min="0" name="g_students" value="{{ g.typical_students if g.typical_students is not none else '' }}" aria-label="Children">
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn small" id="add-group">Add group</button>
+  </section>
+
+  <section class="panel">
+    <h2>Key contacts on site</h2>
+    <div class="contactrow small muted"><span>Role</span><span>Name</span><span>Phone or extension</span></div>
+    {% for role in roles %}
+    <div class="contactrow">
+      <input type="text" value="{{ role }}" readonly tabindex="-1" aria-label="Role" style="background:#f6f7f9">
+      <input type="text" name="c_name_{{ loop.index0 }}" value="{{ by_role[role].name if role in by_role and by_role[role].name else '' }}" aria-label="{{ role }} name">
+      <input type="text" name="c_phone_{{ loop.index0 }}" value="{{ by_role[role].phone if role in by_role and by_role[role].phone else '' }}" aria-label="{{ role }} phone">
+    </div>
+    {% endfor %}
+    <h3 style="margin-top:18px">Other contacts</h3>
+    <div id="extras">
+      {% for c in extras %}
+      <div class="editrow" style="grid-template-columns:1.2fr 1.2fr 1fr .8fr">
+        <input type="text" name="x_role" value="{{ c.role }}" aria-label="Role">
+        <input type="text" name="x_name" value="{{ c.name or '' }}" aria-label="Name">
+        <input type="text" name="x_phone" value="{{ c.phone or '' }}" aria-label="Phone">
+        <select name="x_kind" aria-label="Whose contact"><option value="school">School</option><option value="turing" {{ 'selected' if c.is_turing }}>Turing</option></select>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn small" id="add-contact">Add contact</button>
+  </section>
+
+  {% set ns = namespace(group='') %}
+  {% for key, label, group, restricted, multi in fields %}
+    {% if group != ns.group %}
+      {% if ns.group %}</div></section>{% endif %}
+      <section class="panel"><h2>{{ group }}</h2><div class="fgrid">
+      {% set ns.group = group %}
+    {% endif %}
+    <div class="{{ 'wide' if multi else '' }}">
+      <label for="g_{{ key }}">{{ label }}{% if restricted %} <span class="flag warn">Restricted, not shown on dashboards</span>{% endif %}</label>
+      {% if multi %}<textarea class="tall" id="g_{{ key }}" name="g_{{ key }}">{{ guidelines.get(key, '') }}</textarea>
+      {% else %}<textarea id="g_{{ key }}" name="g_{{ key }}" rows="2">{{ guidelines.get(key, '') }}</textarea>{% endif %}
+    </div>
+  {% endfor %}
+  </div></section>
+  <p class="small muted">Keep sensitive pupil detail off this sheet. Write "speak to the SENCO/DSL" instead.</p>
+
+  <div class="savebar">
+    <div style="flex:1 1 220px;max-width:320px"><label for="by">Your name</label><input type="text" id="by" name="edited_by" value="{{ editor }}" required></div>
+    <button class="btn primary" type="submit">Save changes</button>
+    <a class="btn" href="/schools/{{ school.school_id }}">Cancel</a>
+    <span class="small muted">Saving also marks the sheet as reviewed today.</span>
+  </div>
+</form>
+
+<form method="post" action="/schools/{{ school.school_id }}/reviewed" class="panel noprint" style="margin-top:20px">
+  <h2>Nothing to change?</h2>
+  <div class="inline-form">
+    <div><label for="by2">Your name</label><input type="text" id="by2" name="edited_by" value="{{ editor }}" required></div>
+    <button class="btn" type="submit">Mark as reviewed, no changes</button>
+  </div>
+</form>
+
+<section class="panel" style="margin-top:16px">
+  <h2>Change history</h2>
+  {% if log %}<table><tbody>{% for c in log %}<tr><td class="nowrap muted">{{ c.changed_at[:16].replace('T', ' ') }}</td><td>{{ c.changed_by or '—' }}</td><td>{{ c.summary }}</td></tr>{% endfor %}</tbody></table>
+  {% else %}<p class="muted">No changes recorded.</p>{% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.getElementById('add-group').addEventListener('click', function () {
+    var d = document.createElement('div'); d.className = 'editrow';
+    d.innerHTML = '<input type="hidden" name="group_id" value="">' +
+      '<input type="text" name="g_year" placeholder="e.g. Years 3–4" aria-label="Year group">' +
+      '<input type="text" name="g_start" placeholder="15:30" aria-label="Start"><input type="text" name="g_end" placeholder="16:30" aria-label="Finish">' +
+      '<input type="text" name="g_onsite" placeholder="15:00" aria-label="On site by"><input type="text" name="g_room" aria-label="Room">' +
+      '<input type="number" min="0" name="g_students" aria-label="Children">';
+    document.getElementById('groups').appendChild(d);
+  });
+  document.getElementById('add-contact').addEventListener('click', function () {
+    var d = document.createElement('div'); d.className = 'editrow'; d.style.gridTemplateColumns = '1.2fr 1.2fr 1fr .8fr';
+    d.innerHTML = '<input type="text" name="x_role" placeholder="Role" aria-label="Role"><input type="text" name="x_name" placeholder="Name" aria-label="Name">' +
+      '<input type="text" name="x_phone" placeholder="Phone" aria-label="Phone"><select name="x_kind" aria-label="Whose contact"><option value="school">School</option><option value="turing">Turing</option></select>';
+    document.getElementById('extras').appendChild(d);
+  });
+</script>
+{% endblock %}

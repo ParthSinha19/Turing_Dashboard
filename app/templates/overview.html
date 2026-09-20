@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% import "_m.html" as m %}
+{% block title %}Overview{% endblock %}
+{% block head %}<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>{% endblock %}
+{% block content %}
+<section class="weekband">
+  <div>
+    <h1>AI Club overview</h1>
+    <p>{% if week_count %}{{ week_count }} session{{ 's' if week_count != 1 }} reported this week.{% else %}No sessions reported yet this week.{% endif %}
+       {{ k.schools_reporting }} of {{ k.schools_total }} schools have sent feedback so far.</p>
+  </div>
+  <a class="btn big" href="/week">View This Week's Feedback</a>
+</section>
+
+<div class="stats" style="margin-top:20px">
+  <div class="stat"><div class="n">{{ k.schools_total }}</div><div class="l">Schools</div></div>
+  <div class="stat"><div class="n">{{ k.sessions }}</div><div class="l">Sessions</div></div>
+  <div class="stat"><div class="n">{{ k.students }}</div><div class="l">Students reached</div></div>
+  <div class="stat"><div class="n">{{ k.engagement or '—' }}<small> / 5</small></div><div class="l">Average engagement</div></div>
+  <div class="stat"><div class="n">{{ k.enjoyment or '—' }}<small> / 5</small></div><div class="l">Average enjoyment</div></div>
+  <div class="stat"><div class="n">{{ k.understanding or '—' }}<small> / 5</small></div><div class="l">Average understanding</div></div>
+  <div class="stat"><div class="n">{{ k.activity_quality or '—' }}<small> / 5</small></div><div class="l">Average activity quality</div></div>
+  <div class="stat {{ 'warn' if k.attention }}"><div class="n">{{ k.attention }}</div><div class="l">Sessions needing attention</div></div>
+  <div class="stat {{ 'warn' if k.open_actions }}"><div class="n">{{ k.open_actions }}</div><div class="l">Outstanding actions</div></div>
+  <div class="stat"><div class="n">{{ k.technical }}</div><div class="l">Technical issues</div></div>
+</div>
+<p class="small muted" style="margin:6px 2px 0">Students reached counts attendances, so a pupil at several sessions is counted each time.</p>
+
+<div class="grid g2" style="margin-top:20px">
+  <section class="panel">
+    <h2>Feedback sentiment</h2>
+    <div class="compare">
+      <div class="who">Teacher assessment<br><span class="small">{{ teacher.n }} sessions</span></div>
+      <div>{{ m.sbar(teacher) }}</div>
+      <div class="who">AI assessment</div>
+      <div>{{ m.ai_bar(ai, model_on) }}</div>
+    </div>
+    <p class="small muted" style="margin:14px 0 0">Teacher assessment is the response teachers selected on the form. AI output is a separate signal and is never treated as ground truth.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Engagement, enjoyment and understanding by week</h2>
+    {% if wtrend|length >= 3 %}
+      <div class="chartbox"><canvas id="wk" aria-label="Weekly averages"></canvas></div>
+    {% else %}
+      <div class="scroll"><table>
+        <thead><tr><th>Week</th><th class="num">Sessions</th><th class="num">Engagement</th><th class="num">Enjoyment</th><th class="num">Understanding</th></tr></thead>
+        <tbody>{% for w in wtrend %}<tr><td>{{ w.label }}</td><td class="num">{{ w.n }}</td><td class="num">{{ w.engagement }}</td><td class="num">{{ w.enjoyment }}</td><td class="num">{{ w.understanding }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+      <p class="small muted" style="margin:10px 0 0">Trend lines appear once there are three weeks of data.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="panel flush" style="margin-top:16px">
+  <h2>Sessions needing attention</h2>
+  {% if attention %}
+    <div class="scroll"><table>
+      <thead><tr><th>School</th><th>Date</th><th>Activity</th><th>Response</th><th>Why flagged</th><th>Follow-up</th></tr></thead>
+      <tbody>{% for r in attention %}
+        <tr data-href="/sessions/{{ r.session_id }}">
+          <td>{{ m.school_cell(r) }}</td>
+          <td class="nowrap"><a href="/sessions/{{ r.session_id }}">{{ r.session_date|date('%a %d %b') }}</a></td>
+          <td>{{ r.activity or '—' }}</td><td>{{ m.sent(r.teacher_sentiment) }}</td>
+          <td class="small">{{ r.reasons|join(', ') }}</td><td>{{ m.prio(r.priority, r.action_status) }}</td>
+        </tr>{% endfor %}</tbody>
+    </table></div>
+  {% else %}<div class="empty">Nothing needs attention.</div>{% endif %}
+</section>
+
+<div class="grid g2" style="margin-top:16px">
+  <section class="panel">
+    <h2>What is going well</h2>
+    {% if themes.positive %}<ul class="themes">{% for t in themes.positive[:6] %}
+      <li><span>{{ t.label }}</span><span class="bar"><i style="width:{{ t.pct }}%"></i></span><span class="ct">{{ t.n }}/{{ themes.sessions }}</span></li>{% endfor %}</ul>
+    {% else %}<p class="muted">No themes yet.</p>{% endif %}
+  </section>
+  <section class="panel">
+    <h2>Recurring issues</h2>
+    {% if themes.negative %}<ul class="themes bad">{% for t in themes.negative[:6] %}
+      <li><span>{{ t.label }}</span><span class="bar"><i style="width:{{ t.pct }}%"></i></span><span class="ct">{{ t.n }}/{{ themes.sessions }}</span></li>{% endfor %}</ul>
+    {% else %}<p class="muted">No issues recorded.</p>{% endif %}
+  </section>
+</div>
+
+<section class="panel flush" style="margin-top:16px">
+  <div class="between" style="padding:16px 20px 0"><h2>Schools</h2><a class="btn small" href="/schools">All schools</a></div>
+  <div class="scroll"><table>
+    <thead><tr><th>School</th><th class="num">Sessions</th><th>Last session</th><th>Engagement</th><th>Enjoyment</th><th>Sentiment</th><th>Attention</th></tr></thead>
+    <tbody>{% for s in schools %}
+      <tr data-href="/schools/{{ s.school_id }}">
+        <td><a href="/schools/{{ s.school_id }}">{{ m.school_cell(s) }}</a></td>
+        <td class="num">{{ s.n }}</td><td>{{ s.last|date('%d %b') if s.last else '—' }}</td>
+        <td>{{ m.meter(s.engagement) }}</td><td>{{ m.meter(s.enjoyment) }}</td>
+        <td style="min-width:150px">{% if s.n %}<div class="sbar">{% for k, c in (('Positive','pos'),('Mixed','mix'),('Negative','neg')) %}{% if s.sentiment[k].pct %}<span class="{{ c }}" style="width:{{ s.sentiment[k].pct }}%" title="{{ k }} {{ s.sentiment[k].pct }}%"></span>{% endif %}{% endfor %}</div>{% else %}<span class="muted small">No feedback yet</span>{% endif %}</td>
+        <td>{% if s.attention %}<span class="flag">{{ s.attention }} to review</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}
+{% block scripts %}
+{% if wtrend|length >= 3 %}
+<script>
+  new Chart(document.getElementById('wk'), {
+    type: 'line',
+    data: { labels: {{ wtrend|map(attribute='label')|list|tojson }},
+      datasets: [
+        { label: 'Engagement', data: {{ wtrend|map(attribute='engagement')|list|tojson }}, borderColor: '#1e5a6e', backgroundColor: '#1e5a6e', tension: .25 },
+        { label: 'Enjoyment', data: {{ wtrend|map(attribute='enjoyment')|list|tojson }}, borderColor: '#b07a14', backgroundColor: '#b07a14', borderDash: [6, 3], tension: .25 },
+        { label: 'Understanding', data: {{ wtrend|map(attribute='understanding')|list|tojson }}, borderColor: '#6b7684', backgroundColor: '#6b7684', borderDash: [2, 3], tension: .25 } ] },
+    options: { maintainAspectRatio: false, scales: { y: { min: 1, max: 5, ticks: { stepSize: 1 } } }, plugins: { legend: { position: 'bottom' } } }
+  });
+</script>
+{% endif %}
+{% endblock %}

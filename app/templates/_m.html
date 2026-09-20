@@ -1,0 +1,83 @@
+{# Shared display pieces #}
+{% macro logo(school, size='') %}
+  {%- if school.logo_path -%}
+    <img class="logo {{ size }}" src="/static/{{ school.logo_path }}" alt="{{ school.name or school.school_name }} logo">
+  {%- else -%}
+    {%- set words = (school.short_name or school.name or school.school_name or "?").replace("'", "").split() -%}
+    <span class="logo mono {{ size }}" aria-hidden="true">{{ (words[0][0] ~ (words[1][0] if words|length > 1 else ''))|upper }}</span>
+  {%- endif -%}
+{% endmacro %}
+
+{% macro school_cell(r) %}
+  <span class="school-cell">{{ logo(r) }}<span>{{ r.school_name or r.name }}</span></span>
+{% endmacro %}
+
+{% macro sent(s) %}
+  {%- if s == 'Positive' %}<span class="pill pos">Positive</span>
+  {%- elif s == 'Negative' %}<span class="pill neg">Negative</span>
+  {%- elif s == 'Mixed' %}<span class="pill mix">Mixed</span>
+  {%- elif s == 'Neutral' %}<span class="pill neu">Neutral</span>
+  {%- else %}<span class="muted">—</span>{% endif -%}
+{% endmacro %}
+
+{% macro prio(p, status) %}
+  {%- if status == 'done' %}<span class="flag ok">Done</span>
+  {%- elif not p and status != 'open' %}<span class="muted">No action</span>
+  {%- elif p and p >= HIGH_PRIORITY %}<span class="flag high">High · P{{ p }}</span>
+  {%- elif p %}<span class="flag soft">P{{ p }}</span>
+  {%- else %}<span class="flag soft">Open</span>{% endif -%}
+{% endmacro %}
+
+{% macro meter(v) %}
+  {%- if v is none %}<span class="muted">—</span>
+  {%- else %}{% set n = v|round|int %}<span class="meter"><span class="segs" aria-hidden="true">{% for i in range(1, 6) %}<i class="{{ 'on' if i <= n }}"></i>{% endfor %}</span><b>{{ v }}</b></span>{% endif -%}
+{% endmacro %}
+
+{% macro attn(r) %}
+  {%- if r.needs_attention %}<span class="flag" title="{{ r.reasons|join('; ') }}">Needs attention</span>{% endif -%}
+{% endmacro %}
+
+{% macro sbar(d, keys=('Positive','Mixed','Negative')) %}
+  <div class="sbar" role="img" aria-label="{% for k in keys %}{{ k }} {{ d[k].pct }}%{{ ', ' if not loop.last }}{% endfor %}">
+    {% for k in keys %}{% if d[k].pct %}<span class="{{ {'Positive':'pos','Mixed':'mix','Negative':'neg','Neutral':'neu'}[k] }}" style="width:{{ d[k].pct }}%"></span>{% endif %}{% endfor %}
+  </div>
+  <div class="legend">
+    {% for k in keys %}<span><i class="k {{ {'Positive':'pos','Mixed':'mix','Negative':'neg','Neutral':'neu'}[k] }}"></i>{{ k }} <b>{{ d[k].pct }}%</b></span>{% endfor %}
+  </div>
+{% endmacro %}
+
+{% macro sessions_table(rows, show_school=True) %}
+<div class="scroll">
+<table>
+  <thead><tr>
+    {% if show_school %}<th>School</th>{% endif %}
+    <th>Date</th><th>Activity</th><th>Year group</th><th class="num">Students</th>
+    <th>Engagement</th><th>Enjoyment</th><th>Understanding</th><th>Response</th><th>Follow-up</th>
+  </tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr data-href="/sessions/{{ r.session_id }}">
+      {% if show_school %}<td>{{ school_cell(r) }}</td>{% endif %}
+      <td class="nowrap"><a href="/sessions/{{ r.session_id }}">{{ r.session_date|date('%a %d %b') }}</a></td>
+      <td>{{ r.activity or '—' }}</td>
+      <td class="nowrap">{{ r.year_group_label or '—' }}</td>
+      <td class="num">{{ r.students_present if r.students_present is not none else '—' }}</td>
+      <td>{{ meter(r.engagement) }}</td><td>{{ meter(r.enjoyment) }}</td><td>{{ meter(r.understanding) }}</td>
+      <td class="resp">{{ sent(r.teacher_sentiment) }}{% if r.student_response_raw %}<div class="small muted">{{ r.student_response_raw }}</div>{% endif %}</td>
+      <td><div class="stackf">{{ attn(r) }}{{ prio(r.priority, r.action_status) }}</div></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endmacro %}
+
+{% macro ai_bar(ai, model_on) %}
+  {%- if ai %}
+    {{ sbar(ai, ('Positive','Mixed','Negative','Neutral')) }}
+    <p class="small muted" style="margin-top:8px">{{ ai.n }} sessions analysed by <code>{{ ai.version }}</code>.
+      {% if ai.review %}<span class="flag warn">{{ ai.review }} low-confidence, review</span>{% endif %}</p>
+  {%- else %}
+    <p class="muted small" style="margin:0">Not run yet. {% if model_on %}Run it from Import.{% else %}No model is configured, so the dashboard uses the teacher's response only.{% endif %}</p>
+  {%- endif %}
+{% endmacro %}

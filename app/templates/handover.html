@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% import "_m.html" as m %}
+{% block title %}Handover: {{ school.name }}{% endblock %}
+{% block content %}
+<div class="crumbs noprint"><a href="/schools/{{ school.school_id }}">{{ school.name }}</a> / Handover sheet</div>
+<div class="page-head between">
+  <div style="display:flex;gap:16px;align-items:center">{{ m.logo(school, 'lg') }}
+    <div><h1>{{ school.name }}: school information sheet</h1>
+      <p class="muted" style="margin:0">{{ school.address or '' }}{% if school.phone %}, {{ school.phone }}{% endif %}</p>
+      <p class="small muted" style="margin:4px 0 0">{{ review.label }}{% if school.reviewed_by %} by {{ school.reviewed_by }}{% endif %}. Turing Education Ltd.</p></div></div>
+  <div class="noprint" style="display:flex;gap:8px;flex-wrap:wrap">
+    {% if restricted %}<a class="btn" href="?restricted=0">Hide door codes and passwords</a>{% else %}<a class="btn" href="?restricted=1">Include door codes and passwords</a>{% endif %}
+    <button class="btn primary" onclick="window.print()">Print</button>
+  </div>
+</div>
+{% if comp.warnings %}<p class="small" style="color:var(--mix)"><b>Missing:</b> {{ comp.warnings|join('; ') }}.</p>{% endif %}
+<section class="panel stack">
+  <div><h2>Club day and groups</h2>
+    <p>{{ school.club_days or 'Club day not recorded' }}{% if school.term_start and school.term_end %}, term {{ school.term_start|date('%d %b') }} to {{ school.term_end|date('%d %b %Y') }}{% endif %}</p>
+    {% if groups %}<table><thead><tr><th>Year group</th><th>Club time</th><th>On site by</th><th>Room</th><th class="num">Children</th></tr></thead>
+      <tbody>{% for g in groups %}<tr><td>{{ g.year_group_label }}</td><td>{{ g.start_time or '—' }} to {{ g.end_time or '—' }}</td><td>{{ g.on_site_by or '—' }}</td><td>{{ g.room or '—' }}</td><td class="num">{{ g.typical_students if g.typical_students is not none else '—' }}</td></tr>{% endfor %}</tbody></table>{% endif %}
+  </div>
+  <div><h2>Contacts</h2>
+    {% if contacts %}<dl class="kv">{% for c in contacts %}<dt>{{ c.role }}{% if c.is_turing %} <span class="muted small">(Turing)</span>{% endif %}</dt><dd>{{ c.name }}{% if c.phone %}, {{ c.phone }}{% endif %}</dd>{% endfor %}</dl>{% else %}<p class="muted">None recorded.</p>{% endif %}</div>
+  {% for grp in guideline_groups %}
+  <div><h2>{{ grp.title }}</h2>
+    <dl class="kv">{% for label, text, multi in grp.fields %}<dt>{{ label|replace(' (one per line)', '') }}</dt>
+      <dd>{% if multi %}<ol class="plain">{% for ln in text|lines %}<li>{{ ln }}</li>{% endfor %}</ol>{% else %}{{ text }}{% endif %}</dd>{% endfor %}</dl></div>
+  {% endfor %}
+</section>
+{% endblock %}

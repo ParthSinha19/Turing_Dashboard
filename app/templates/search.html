@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% import "_m.html" as m %}
+{% block title %}Search{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Search results</h1>
+  <p class="muted" style="margin:0">“{{ q }}”</p>
+  {% if result.interpretation %}<p class="small" style="margin:8px 0 0">Understood as: {% for i in result.interpretation %}<span class="tag">{{ i }}</span> {% endfor %}</p>{% endif %}</div>
+
+{% for b in result.blocks %}
+  {% if b.type == 'sessions' %}
+    <section class="panel flush" style="margin-bottom:16px"><h2>{{ b.title }}{% if b.total is defined %} <span class="muted small">({{ b.total }})</span>{% endif %}</h2>
+      {% if b.rows %}{{ m.sessions_table(b.rows) }}{% else %}<div class="empty">Nothing matches.</div>{% endif %}</section>
+  {% elif b.type == 'themes' %}
+    <section class="panel" style="margin-bottom:16px"><h2>{{ b.title }}</h2>
+      {% if b['items'] %}<ul class="themes bad">{% for t in b['items'] %}<li><span>{{ t.label }}</span><span class="bar"><i style="width:{{ t.pct }}%"></i></span><span class="ct">{{ t.n }}/{{ b.sessions }}</span></li>{% endfor %}</ul>
+      {% else %}<p class="muted">No issues recorded.</p>{% endif %}</section>
+  {% elif b.type == 'activities' %}
+    <section class="panel flush" style="margin-bottom:16px"><h2>{{ b.title }}</h2>
+      {% if b['items'] %}<div class="scroll"><table><thead><tr><th>Activity</th><th class="num">Sessions</th><th class="num">Positive response</th><th>Enjoyment</th><th>Engagement</th></tr></thead>
+        <tbody>{% for a in b['items'] %}<tr><td>{{ a.activity }}</td><td class="num">{{ a.n }}</td><td class="num">{{ a.pct_positive }}%</td><td>{{ m.meter(a.enjoyment) }}</td><td>{{ m.meter(a.engagement) }}</td></tr>{% endfor %}</tbody></table></div>
+      {% else %}<div class="empty">No activities to compare.</div>{% endif %}</section>
+  {% elif b.type == 'trend' %}
+    <section class="panel flush" style="margin-bottom:16px"><h2>{{ b.title }}</h2>
+      {% if b.points %}<table><thead><tr><th>Week</th><th class="num">Sessions</th><th class="num">{{ b.metric|capitalize }}</th></tr></thead>
+        <tbody>{% for p in b.points %}<tr><td>{{ p.label }}</td><td class="num">{{ p.n }}</td><td class="num">{{ p[b.metric] if p[b.metric] is not none else '—' }}</td></tr>{% endfor %}</tbody></table>
+      {% else %}<div class="empty">No sessions in this period.</div>{% endif %}</section>
+  {% endif %}
+{% endfor %}
+
+{% if not result.blocks %}
+  <section class="panel">
+    <p>No matching school or question was recognised.</p>
+    {% if result.suggestions %}<p>Did you mean: {% for s in result.suggestions %}<a href="/schools/{{ s.id }}">{{ s.name }}</a>{{ ', ' if not loop.last }}{% endfor %}?</p>{% endif %}
+    <p class="small muted" style="margin:0">Try a school name, or: “latest feedback from Chelsea Academy”, “which schools need attention”, “negative feedback this week”, “most common problems”, “how has engagement changed over the last month”.</p>
+  </section>
+{% endif %}
+{% endblock %}

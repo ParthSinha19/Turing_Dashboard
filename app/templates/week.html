@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% import "_m.html" as m %}
+{% block title %}Feedback for the week of {{ monday|date('%d %b') }}{% endblock %}
+{% block content %}
+<div class="page-head between">
+  <div>
+    <h1>{{ "This week's feedback" if is_current else "Feedback for the week" }}</h1>
+    <p class="muted" style="margin:0">{{ monday|date('%a %d %b') }} to {{ sunday|date('%a %d %b %Y') }}</p>
+  </div>
+  <div class="noprint" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <a class="btn" href="{{ prev_url }}" aria-label="Previous week">← Previous week</a>
+    {% if not is_current %}<a class="btn" href="{{ current_url }}">Current week</a>{% endif %}
+    {% if next_url %}<a class="btn" href="{{ next_url }}">Next week →</a>{% else %}<span class="btn" aria-disabled="true" style="opacity:.45;cursor:default">Next week →</span>{% endif %}
+  </div>
+</div>
+
+{% if rows %}
+  <div class="grid g2" style="margin-bottom:16px">
+    <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat"><div class="n">{{ k.sessions }}</div><div class="l">Sessions</div></div>
+      <div class="stat"><div class="n">{{ k.schools_reporting }}</div><div class="l">Schools</div></div>
+      <div class="stat"><div class="n">{{ k.students }}</div><div class="l">Students</div></div>
+      <div class="stat {{ 'warn' if k.attention }}"><div class="n">{{ k.attention }}</div><div class="l">Need attention</div></div>
+    </div>
+    <div class="panel"><h3>Teacher assessment this week</h3>{{ m.sbar(dist) }}</div>
+  </div>
+  <section class="panel flush">{{ m.sessions_table(rows) }}</section>
+  <p class="small muted" style="margin-top:8px">Select a row to open the full feedback.</p>
+{% else %}
+  <section class="panel"><div class="empty">
+    <p>No feedback recorded for this week yet.</p>
+    <a class="btn" href="/admin/import">Import feedback</a>
+  </div></section>
+{% endif %}
+{% endblock %}
