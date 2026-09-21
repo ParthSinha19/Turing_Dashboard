@@ -9,52 +9,11 @@
     {{ m.logo(school, 'lg') }}
     <div>
       <h1>{{ school.name }}</h1>
-      <p class="muted" style="margin:0">{{ school.address or 'Address not recorded' }}</p>
-      <p style="margin:6px 0 0">
-        {% if review.state == 'ok' %}<span class="flag ok">{{ review.label }}</span>
-        {% else %}<span class="flag warn">{{ review.label }}</span>{% endif %}
-        <span class="flag soft">{{ comp.pct }}% of info sheet complete</span>
-      </p>
     </div>
   </div>
   <div class="noprint" style="display:flex;gap:8px;flex-wrap:wrap">
-    <a class="btn" href="/schools/{{ school.school_id }}/handover">Handover sheet</a>
     <a class="btn primary" href="/schools/{{ school.school_id }}/edit">Edit school</a>
   </div>
-</div>
-
-{% if comp.warnings %}
-<section class="panel" style="border-color:#e4cf9d;background:#fffcf3;margin-bottom:16px">
-  <h3>Gaps in the info sheet</h3>
-  <ul class="warnlist">{% for w in comp.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
-</section>
-{% endif %}
-
-<div class="grid g2">
-  <section class="panel">
-    <h2>Club details</h2>
-    <dl class="kv">
-      <dt>Club day</dt><dd>{{ school.club_days or '—' }}</dd>
-      <dt>Term dates</dt><dd>{% if school.term_start and school.term_end %}{{ school.term_start|date('%d %b %Y') }} to {{ school.term_end|date('%d %b %Y') }}{% else %}—{% endif %}</dd>
-      <dt>School phone</dt><dd>{{ school.phone or '—' }}</dd>
-      <dt>Turing teacher{{ 's' if teachers|length > 1 }}</dt><dd>{{ teachers|join(', ') or '—' }}</dd>
-    </dl>
-    {% if groups %}
-    <div class="scroll" style="margin-top:14px"><table>
-      <thead><tr><th>Year group</th><th>Club time</th><th>On site by</th><th>Room</th><th class="num">Children</th></tr></thead>
-      <tbody>{% for g in groups %}<tr>
-        <td>{{ g.year_group_label }}</td><td class="nowrap">{{ g.start_time or '—' }} to {{ g.end_time or '—' }}</td>
-        <td>{{ g.on_site_by or '—' }}</td><td>{{ g.room or '—' }}</td><td class="num">{{ g.typical_students if g.typical_students is not none else '—' }}</td>
-      </tr>{% endfor %}</tbody>
-    </table></div>
-    {% endif %}
-  </section>
-
-  <section class="panel">
-    <h2>Contacts</h2>
-    {% if school_contacts %}<dl class="kv">{% for c in school_contacts %}<dt>{{ c.role }}</dt><dd>{{ c.name }}{% if c.phone %}<br><span class="muted">{{ c.phone }}</span>{% endif %}</dd>{% endfor %}</dl>{% else %}<p class="muted">No school contacts recorded.</p>{% endif %}
-    {% if turing_contacts %}<h3 style="margin-top:16px">Turing</h3><dl class="kv">{% for c in turing_contacts %}<dt>{{ c.role }}</dt><dd>{{ c.name }}{% if c.phone %}<br><span class="muted">{{ c.phone }}</span>{% endif %}</dd>{% endfor %}</dl>{% endif %}
-  </section>
 </div>
 
 <h2 style="margin:28px 0 12px">Club performance</h2>
@@ -128,30 +87,6 @@
 <section class="panel"><div class="empty"><p>No feedback has been recorded for this school yet.</p></div></section>
 {% endif %}
 
-<h2 style="margin:28px 0 12px">School guidelines</h2>
-<section class="panel">
-  {% if guideline_groups %}
-    {% for grp in guideline_groups %}
-    <details {{ 'open' if loop.first }}>
-      <summary>{{ grp.title }}</summary>
-      <dl class="kv">
-        {% for label, text, multi in grp.fields %}
-          <dt>{{ label|replace(' (one per line)', '') }}</dt>
-          <dd>{% if multi %}<ol class="plain">{% for ln in text|lines %}<li>{{ ln }}</li>{% endfor %}</ol>{% else %}{{ text }}{% endif %}</dd>
-        {% endfor %}
-      </dl>
-    </details>
-    {% endfor %}
-    <p class="small muted" style="margin:12px 0 0">Door codes and passwords are kept off this page. They appear in the editor.</p>
-  {% else %}
-    <div class="empty"><p>No guidelines recorded yet.</p><a class="btn" href="/schools/{{ school.school_id }}/edit">Fill in the info sheet</a></div>
-  {% endif %}
-</section>
-
-<section class="panel" style="margin-top:16px">
-  <h2>Info sheet checklist</h2>
-  <ul class="check">{% for c in comp.checks %}<li class="{{ '' if c.ok else 'no' }}">{{ c.label }}</li>{% endfor %}</ul>
-</section>
 {% endblock %}
 {% block scripts %}
 {% if rows and trend|length >= 3 %}
